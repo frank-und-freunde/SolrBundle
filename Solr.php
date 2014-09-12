@@ -314,10 +314,15 @@ class Solr
 
     /**
      * @param object $entity
+     * @return bool|null
      */
     public function updateDocument($entity)
     {
         $metaInformations = $this->metaInformationFactory->loadInformation($entity);
+
+        if (!$metaInformations) {
+            return null;
+        }
 
         $doc = $this->toDocument($metaInformations);
 
