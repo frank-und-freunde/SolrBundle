@@ -54,8 +54,9 @@ class Solr
     /**
      * @param Client $client
      * @param CommandFactory $commandFactory
-     * @param EventManager $manager
+     * @param \FS\SolrBundle\Event\EventManager|\Symfony\Component\EventDispatcher\EventDispatcherInterface $manager
      * @param MetaInformationFactory $metaInformationFactory
+     * @param Doctrine\Mapper\EntityMapper $entityMapper
      */
     public function __construct(
         Client $client,
@@ -68,7 +69,6 @@ class Solr
         $this->commandFactory = $commandFactory;
         $this->eventManager = $manager;
         $this->metaInformationFactory = $metaInformationFactory;
-
         $this->entityMapper = $entityMapper;
     }
     
@@ -112,7 +112,10 @@ class Solr
     {
         $metaInformation = $this->metaInformationFactory->loadInformation($entity);
         $class = $metaInformation->getClassName();
-        $entity = new $class;
+
+        if ($metaInformation == null) {
+            $entity = new $class;
+        }
 
         $query = new SolrQuery();
         $query->setSolr($this);
@@ -264,9 +267,11 @@ class Solr
         }
 
         $targetEntity = $entity;
+
         $mappedEntities = array();
         foreach ($response as $document) {
-            $mappedEntities[] = $this->entityMapper->toEntity($document, $targetEntity);
+            $mappedEntities[] = $this
+                ->entityMapper->toEntity($document, $targetEntity);
         }
 
         return $mappedEntities;

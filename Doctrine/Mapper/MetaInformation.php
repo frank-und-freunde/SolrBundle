@@ -52,6 +52,16 @@ class MetaInformation
     private $synchronizationCallback = '';
 
     /**
+     * @var bool
+     */
+    private $isAbstract = false;
+
+    /**
+     * @var array
+     */
+    private $distriminatorMap = array();
+
+    /**
      *
      * @return number
      */
@@ -253,5 +263,37 @@ class MetaInformation
     public function setSynchronizationCallback($synchronizationCallback)
     {
         $this->synchronizationCallback = $synchronizationCallback;
+    }
+
+    /**
+     * @param boolean $isAbstract
+     */
+    public function setIsAbstract($isAbstract)
+    {
+        $this->isAbstract = $isAbstract;
+    }
+
+    /**
+     * @return boolean
+     */
+    public function isAbstract()
+    {
+        return $this->isAbstract;
+    }
+
+    /**
+     * @param array $distriminatorMap
+     */
+    public function setDistriminatorMap(array $distriminatorMap)
+    {
+        $this->distriminatorMap = $distriminatorMap;
+    }
+
+    /**
+     * @return array
+     */
+    public function getDistriminatorMap()
+    {
+        return $this->distriminatorMap;
     }
 }

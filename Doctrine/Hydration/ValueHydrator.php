@@ -15,7 +15,7 @@ class ValueHydrator implements Hydrator
     {
         $targetEntity = $metaInformation->getEntity();
 
-        $reflectionClass = new \ReflectionClass($targetEntity);
+        $reflectionClass = new \ReflectionClass($metaInformation->getClassName());
         foreach ($document as $property => $value) {
             try {
                 $classProperty = $reflectionClass->getProperty($this->removeFieldSuffix($property));

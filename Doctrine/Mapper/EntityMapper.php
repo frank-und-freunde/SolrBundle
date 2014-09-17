@@ -30,15 +30,21 @@ class EntityMapper
     private $hydrationMode = '';
 
     /**
+     * @var MetaInformationFactory
+     */
+    private $metaInformationFactory;
+
+    /**
      * @param Hydrator $doctrineHydrator
      * @param Hydrator $indexHydrator
+     * @param MetaInformationFactory $metaInformationFactory
      */
-    public function __construct(Hydrator $doctrineHydrator, Hydrator $indexHydrator)
+    public function __construct(Hydrator $doctrineHydrator, Hydrator $indexHydrator, MetaInformationFactory $metaInformationFactory)
     {
         $this->doctrineHydrator = $doctrineHydrator;
         $this->indexHydrator = $indexHydrator;
-
         $this->hydrationMode = HydrationModes::HYDRATE_DOCTRINE;
+        $this->metaInformationFactory = $metaInformationFactory;
     }
 
     /**
@@ -75,8 +81,28 @@ class EntityMapper
             throw new \InvalidArgumentException('$sourceTargetEntity should not be null');
         }
 
-        $metaInformationFactory = new MetaInformationFactory();
-        $metaInformation = $metaInformationFactory->loadInformation($sourceTargetEntity);
+        $metaInformation = $this->metaInformationFactory->loadInformation($sourceTargetEntity);
+
+        if ($metaInformation->isAbstract()) {
+            foreach ($metaInformation->getDistriminatorMap() as $type => $class) {
+                // todo: use \FS\SolrBundle\Doctrine\Mapper\MetaInformationFactory::getDocumentName
+                if (strrpos($class, '\\')) {
+                    $generatedDocumentName = strtolower(substr($class, (strrpos($class, '\\') + 1)));
+                    $fullClass= $class;
+                } else {
+                    $generatedDocumentName = strtolower($class);
+                    $fullClass = substr(
+                        $metaInformation->getClassName(),
+                        0,
+                        strrpos($metaInformation->getClassName(), '\\') + 1
+                    ) . $class;
+                }
+
+                if ($generatedDocumentName == $document->document_name_s) {
+                    $metaInformation->setEntity(new $fullClass);
+                }
+            }
+        }
 
         $hydratedDocument = $this->indexHydrator->hydrate($document, $metaInformation);
         if ($this->hydrationMode == HydrationModes::HYDRATE_INDEX) {

@@ -43,8 +43,14 @@ class AnnotationReader
             }
 
             $property->setAccessible(true);
-            $annotation->value = $property->getValue($entity);
+
             $annotation->name = $property->getName();
+            // todo
+            if (is_object($entity)) {
+                $annotation->value = $property->getValue($entity);
+            } else {
+                $annotation->value = null;
+            }
 
             $fields[] = $annotation;
         }
@@ -74,14 +80,20 @@ class AnnotationReader
                 }
 
                 if (!$method->isPublic()) {
-                    throw new AnnotationException(sprintf('Method "%s" in class "%s" is not callabe. Change visibility from %s to %s.',
+                    throw new AnnotationException(sprintf('Method "%s" in class "%s" is not callable. Change visibility from %s to %s.',
                         $method->getName(),
                         $method->getDeclaringClass(),
                         $method->isPrivate() ? 'private' : 'protected'
                     ));
                 }
 
-                $annotation->value = $method->invoke($entity);
+                // todo
+                if (is_object($entity)) {
+                    $annotation->value = $method->invoke($entity);
+                } else {
+                    $annotation->value = null;
+                }
+
                 if ($annotation->name == '') {
                     $annotation->name = $method->getName();
                 }
@@ -216,5 +228,17 @@ class AnnotationReader
         $reflectionClass = new \ReflectionClass($entity);
 
         return $this->reader->getClassAnnotation($reflectionClass, $annotation);
+    }
+
+    public function getDistriminatorMap($entity)
+    {
+        $reflectionClass = new \ReflectionClass($entity);
+
+        // todo: added support for orm too
+        $odmDistriminatorMapClass = '\Doctrine\ODM\MongoDB\Mapping\Annotations\DiscriminatorMap';
+
+        $odmDistriminatorMap = $this->getClassAnnotation($entity, $odmDistriminatorMapClass);
+
+        return $odmDistriminatorMap->value;
     }
 }
