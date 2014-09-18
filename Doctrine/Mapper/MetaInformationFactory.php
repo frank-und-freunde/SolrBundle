@@ -72,12 +72,12 @@ class MetaInformationFactory
         $metaInformation->setEntity($entity);
         $metaInformation->setClassName($className);
         $metaInformation->setDocumentName($this->getDocumentName($className));
-        $metaInformation->setFieldMapping($this->annotationReader->getFieldMapping($className));
-        $metaInformation->setFields($this->annotationReader->getFields($className));
-        $metaInformation->setRepository($this->annotationReader->getRepository($className));
-        $metaInformation->setIdentifier($this->annotationReader->getIdentifier($className));
-        $metaInformation->setBoost($this->annotationReader->getEntityBoost($className));
-        $metaInformation->setSynchronizationCallback($this->annotationReader->getSynchronizationCallback($className));
+        $metaInformation->setFieldMapping($this->annotationReader->getFieldMapping($entity));
+        $metaInformation->setFields($this->annotationReader->getFields($entity));
+        $metaInformation->setRepository($this->annotationReader->getRepository($entity));
+        $metaInformation->setIdentifier($this->annotationReader->getIdentifier($entity));
+        $metaInformation->setBoost($this->annotationReader->getEntityBoost($entity));
+        $metaInformation->setSynchronizationCallback($this->annotationReader->getSynchronizationCallback($entity));
 
         if ($reflection->isAbstract()) {
             $metaInformation->setIsAbstract(true);
