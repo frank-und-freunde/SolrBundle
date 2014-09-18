@@ -10,6 +10,13 @@ class ErrorEvent extends Event
     private $exception = null;
 
     /**
+     * The exception will be rethrown if this flag is false after dispatch
+     *
+     * @var bool
+     */
+    private $handled = false;
+
+    /**
      * @return \Exception
      */
     public function getException()
@@ -35,6 +42,25 @@ class ErrorEvent extends Event
         }
 
         return $this->exception->getMessage();
+    }
+
+    /**
+     * Mark the event as handled and do not rethrow an exception
+     *
+     * @param boolean $handled
+     */
+    public function setHandled($handled)
+    {
+        $this->handled = $handled;
+    }
+
+
+    /**
+     * @return bool
+     */
+    public function wasHandled()
+    {
+        return $this->handled;
     }
 }
 

@@ -358,6 +358,8 @@ class Solr
     /**
      * @param Document $doc
      * @param MetaInformation $metaInformation
+     * @param \FS\SolrBundle\Event\Event|\FS\SolrBundle\Event\Event\Event $event
+     * @throws \Exception
      */
     private function addDocumentToIndex($doc, MetaInformation $metaInformation, Event $event)
     {
@@ -367,11 +369,15 @@ class Solr
             $update->addCommit();
 
             $this->solrClient->update($update);
-        } catch (\Exception $e) {
+        } catch (\Exception $e) { // todo: fix pokemon exception handling
             $errorEvent = new ErrorEvent(null, $metaInformation, json_encode($this->solrClient->getOptions()), $event);
             $errorEvent->setException($e);
 
             $this->eventManager->dispatch(Events::ERROR, $errorEvent);
+
+            if (!$errorEvent->wasHandled()) {
+                throw $e;
+            }
         }
     }
 }
