@@ -155,7 +155,7 @@ class AnnotationReader
     }
 
     /**
-     * @param object $entity
+     * @param object|string $entity
      * @return string classname of repository
      */
     public function getRepository($entity)
@@ -172,7 +172,7 @@ class AnnotationReader
     /**
      * returns all fields and field for idendification
      *
-     * @param object $entity
+     * @param object|string $entity
      * @return array
      */
     public function getFieldMapping($entity)

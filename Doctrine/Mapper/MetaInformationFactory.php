@@ -55,14 +55,15 @@ class MetaInformationFactory
      */
     public function loadInformation($entity)
     {
-
         $className = $this->getClass($entity);
 
         $reflection = new \ReflectionClass($className);
 
+        /*
         if (!is_object($entity) && !$reflection->isAbstract()) {
             $entity = new $className;
         }
+        */
 
         if (!$this->annotationReader->hasDocumentDeclaration($className)) {
             return null;
@@ -72,16 +73,27 @@ class MetaInformationFactory
         $metaInformation->setEntity($entity);
         $metaInformation->setClassName($className);
         $metaInformation->setDocumentName($this->getDocumentName($className));
-        $metaInformation->setFieldMapping($this->annotationReader->getFieldMapping($entity));
-        $metaInformation->setFields($this->annotationReader->getFields($entity));
-        $metaInformation->setRepository($this->annotationReader->getRepository($entity));
-        $metaInformation->setIdentifier($this->annotationReader->getIdentifier($entity));
-        $metaInformation->setBoost($this->annotationReader->getEntityBoost($entity));
-        $metaInformation->setSynchronizationCallback($this->annotationReader->getSynchronizationCallback($entity));
+        $metaInformation->setFieldMapping(
+            $this->annotationReader->getFieldMapping($entity ?: $className)
+        );
+        $metaInformation->setFields(
+            $this->annotationReader->getFields($entity ?: $className)
+        );
+        $metaInformation->setRepository(
+            $this->annotationReader->getRepository($entity ?: $className)
+        );
+        $metaInformation->setIdentifier
+            ($this->annotationReader->getIdentifier($entity ?: $className)
+            );
+        $metaInformation->setBoost(
+            $this->annotationReader->getEntityBoost($entity ?: $className)
+        );
 
         if ($reflection->isAbstract()) {
             $metaInformation->setIsAbstract(true);
             $metaInformation->setDistriminatorMap($this->annotationReader->getDistriminatorMap($className));
+        } else {
+            $metaInformation->setSynchronizationCallback($this->annotationReader->getSynchronizationCallback($entity));
         }
 
         return $metaInformation;
