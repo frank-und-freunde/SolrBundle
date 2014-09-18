@@ -10,6 +10,11 @@ class SolrQuery extends AbstractQuery
     private $mappedFields = array();
 
     /**
+     * @var bool
+     */
+    private $useOnlyMappedFields = true;
+
+    /**
      * @var array
      */
     private $searchTerms = array();
@@ -51,6 +56,11 @@ class SolrQuery extends AbstractQuery
     public function setMappedFields($mappedFields)
     {
         $this->mappedFields = $mappedFields;
+    }
+
+    public function useOnlyMappedFields($useOnlyMappedFields)
+    {
+        $this->useOnlyMappedFields = $useOnlyMappedFields;
     }
 
     /**
@@ -109,6 +119,7 @@ class SolrQuery extends AbstractQuery
      *
      * @param string $field
      * @param string $value
+     * @throws \InvalidArgumentException
      * @return SolrQuery
      */
     public function addSearchTerm($field, $value)
@@ -117,8 +128,18 @@ class SolrQuery extends AbstractQuery
 
         if (array_key_exists($field, $documentFieldsAsValues)) {
             $documentFieldName = $documentFieldsAsValues[$field];
-
             $this->searchTerms[$documentFieldName] = $value;
+        } elseif ($this->useOnlyMappedFields) {
+            $errorMessage =
+                'Field "%s" is not mapped on "%s", available fields are %s. '.
+                'You can set the option "useOnlyMappedFields" to false to skip this check.'
+            ;
+
+            throw new \InvalidArgumentException(sprintf($errorMessage,
+                $field,
+                is_object($this->getEntity()) ? get_class($this->getEntity()) : $this->getEntity(),
+                implode(', ', $documentFieldsAsValues)
+            ));
         }
 
         return $this;
