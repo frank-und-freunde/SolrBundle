@@ -25,17 +25,27 @@ class Field extends Annotation
     public $boost = 0;
 
     /**
+     * @var bool
+     */
+    public $dynamic = true;
+
+    /**
+     * @var bool
+     */
+    public $multiValued = false;
+
+    /**
      * @var array
      */
     private static $TYP_MAPPING = array(
-        'string' => '_s',
-        'text' => '_t',
-        'date' => '_dt',
-        'boolean' => '_b',
-        'integer' => '_i',
-        'long' => '_l',
-        'float' => '_f',
-        'double' => '_d',
+        'string' => 's',
+        'text' => 't',
+        'date' => 'dt',
+        'boolean' => 'b',
+        'integer' => 'i',
+        'long' => 'l',
+        'float' => 'f',
+        'double' => 'd',
     );
 
     /**
@@ -53,19 +63,40 @@ class Field extends Annotation
 
     /**
      * @param string $type
+     * @throws \LogicException
+     * @throws \InvalidArgumentException
      * @return string
      */
     private function getTypeSuffix($type)
     {
-        if ($type == '') {
-            return '';
+        $suffix = '';
+
+        if ($this->dynamic) {
+            // add separator
+            $suffix .= '_';
+
+            // add type alias
+            if (!array_key_exists($this->type, self::$TYP_MAPPING)) {
+                throw new \InvalidArgumentException(sprintf('Unknown type "%s", supported types: %s',
+                    $this->type,
+                    implode(', ', array_keys(self::$TYP_MAPPING))
+                ));
+            }
+
+            $suffix .= self::$TYP_MAPPING[$this->type];
+
+            // append m for multiValued
+            if ($this->multiValued) {
+                $suffix .= 'm';
+            }
+        } else {
+            if ($this->multiValued) {
+                throw new \LogicException('You can use "multiValued" only for dynamic fields.'.
+                    'Multi valued Non-dynamic fields have to be configured in your schema.xml');
+            }
         }
 
-        if (!isset(self::$TYP_MAPPING[$this->type])) {
-            return '';
-        }
-
-        return self::$TYP_MAPPING[$this->type];
+        return $suffix;
     }
 
     /**
