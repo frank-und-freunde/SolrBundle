@@ -46,6 +46,7 @@ class Field extends Annotation
         'long' => 'l',
         'float' => 'f',
         'double' => 'd',
+        'location' => 'co'
     );
 
     /**
