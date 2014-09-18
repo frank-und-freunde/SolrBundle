@@ -57,6 +57,10 @@ class MetaInformationFactory
     {
         $className = $this->getClass($entity);
 
+        if (!is_object($entity)) {
+            $entity = null;
+        }
+
         $reflection = new \ReflectionClass($className);
 
         /*

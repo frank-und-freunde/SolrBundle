@@ -99,6 +99,7 @@ class EntityMapper
                 }
 
                 if ($generatedDocumentName == $document->document_name_s) {
+                    // todo: avoid instantiating objects
                     $metaInformation->setEntity(new $fullClass);
                 }
             }
