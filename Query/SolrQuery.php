@@ -140,6 +140,8 @@ class SolrQuery extends AbstractQuery
                 is_object($this->getEntity()) ? get_class($this->getEntity()) : $this->getEntity(),
                 implode(', ', $documentFieldsAsValues)
             ));
+        } else {
+            $this->searchTerms[$field] = $value;
         }
 
         return $this;
