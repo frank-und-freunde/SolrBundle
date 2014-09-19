@@ -250,9 +250,12 @@ class Solr
     {
         $entity = $query->getEntity();
 
+        /*
+         * todo: disabled in Query/SolrQuery.php:169 because it limits the features of solarium client
         $queryString = $query->getQuery();
         $query = $this->solrClient->createSelect($query->getOptions());
         $query->setQuery($queryString);
+        */
 
         try {
             $response = $this->solrClient->select($query);
