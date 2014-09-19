@@ -187,6 +187,10 @@ class Solr
                 $errorEvent->setException($e);
 
                 $this->eventManager->dispatch(Events::ERROR, $errorEvent);
+
+                if (!$errorEvent->wasHandled()) {
+                    throw $e;
+                }
             }
 
             $this->eventManager->dispatch(Events::POST_DELETE, $event);
@@ -258,6 +262,10 @@ class Solr
 
             $this->eventManager->dispatch(Events::ERROR, $errorEvent);
 
+            if (!$errorEvent->wasHandled()) {
+                throw $e;
+            }
+
             return array();
         }
 
@@ -304,6 +312,10 @@ class Solr
             $errorEvent->setException($e);
 
             $this->eventManager->dispatch(Events::ERROR, $errorEvent);
+
+            if (!$errorEvent->wasHandled()) {
+                throw $e;
+            }
         }
 
         $this->eventManager->dispatch(Events::POST_CLEAR_INDEX, new Event($this->solrClient));
