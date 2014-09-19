@@ -166,6 +166,11 @@ class SolrQuery extends AbstractQuery
      */
     public function getQuery()
     {
+        return parent::getQuery();
+
+        // todo: it disables features of solarium client
+        // e.g. set filter queries are ignored
+
         if ($this->customQuery) {
             $this->setQuery($this->customQuery);
             return $this->customQuery;
