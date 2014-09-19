@@ -29,8 +29,10 @@ class ValueHydrator implements Hydrator
                 }
             }
 
-            $classProperty->setAccessible(true);
-            $classProperty->setValue($targetEntity, $value);
+            // todo: values from solr will override values from db
+            // bad case: different types will be mixed up
+            //$classProperty->setAccessible(true);
+            //$classProperty->setValue($targetEntity, $value);
         }
 
         return $targetEntity;
