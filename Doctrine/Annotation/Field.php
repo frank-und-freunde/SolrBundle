@@ -20,7 +20,7 @@ class Field extends Annotation
     public $name;
 
     /**
-     * @var numeric
+     * @var int
      */
     public $boost = 0;
 
@@ -105,6 +105,20 @@ class Field extends Annotation
      */
     public function getValue()
     {
+        if ($this->multiValued && !is_array($this->value)) {
+            if (is_object($this->value)) {
+                if (method_exists($this->value, 'toArray')) {
+                    $this->value = $this->value->toArray();
+                } else {
+                    throw new \InvalidArgumentException(sprintf(
+                        "Objects that are declared as multi valued solr field need toArray-method"
+                    ));
+                }
+            } else {
+                throw new \InvalidArgumentException('A primitive variable type can not be used as multi valued.');
+            }
+        }
+
         return $this->value;
     }
 
