@@ -49,11 +49,26 @@ class SynchronizeIndexCommand extends ContainerAwareCommand
 
         $solr = $this->getContainer()->get('solr.client.default');
 
+        $count = 0;
+        $total = count($entities);
+
+        $progress = $this->getHelper('progress');
+        $progress->start($output, $total);
+        $progress->setBarCharacter('-');
+        $progress->setProgressCharacter('>');
+        $progress->setEmptyBarCharacter(' ');
+        $progress->setBarWidth(60);
+
         foreach ($entities as $entity) {
+            $percentage = round($count * 100 / $total, 0);
+
             try {
                 $solr->synchronizeIndex($entity);
+                $progress->advance();
             } catch (\Exception $e) {}
         }
+
+        $progress->finish();
 
         $results = $this->getContainer()->get('solr.console.command.results');
         if ($results->hasErrors()) {
@@ -86,7 +101,7 @@ class SynchronizeIndexCommand extends ContainerAwareCommand
 
         if ($source == 'relational') {
             $objectManager = $this->getContainer()->get(
-              $this->getContainer()->getParameter('solr.doctrine.manager_registry_service_id')
+                $this->getContainer()->getParameter('solr.doctrine.manager_registry_service_id')
             );
         } else {
             if ($source == 'mongodb') {
