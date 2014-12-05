@@ -1,10 +1,18 @@
 <?php
 namespace FS\SolrBundle\Doctrine\Annotation;
 
+use Doctrine\Common\Annotations\AnnotationException;
 use Doctrine\Common\Annotations\AnnotationReader as Reader;
 
 class AnnotationReader
 {
+    /**
+     * @var array
+     */
+    protected static $inMemoryCache = [
+        'reflection_class' => [],
+        'fields' => [],
+    ];
 
     /**
      * @var Reader
@@ -19,6 +27,7 @@ class AnnotationReader
 
     public function __construct()
     {
+        // never call it directly!
         $this->reader = new Reader();
     }
 
@@ -31,12 +40,14 @@ class AnnotationReader
      */
     private function getPropertiesByType($entity, $type)
     {
-        $reflectionClass = new \ReflectionClass($entity);
+        $reflectionClass = static::createOrGetReflectionClass($entity);
         $properties = $reflectionClass->getProperties();
 
         $fields = array();
         foreach ($properties as $property) {
-            $annotation = $this->reader->getPropertyAnnotation($property, $type);
+            /* @var \ReflectionProperty $property */
+            /* @var \FS\SolrBundle\Doctrine\Annotation\Field $annotation */
+            $annotation = $this->getPropertyAnnotation($property, $type);
 
             if (null === $annotation) {
                 continue;
@@ -68,52 +79,72 @@ class AnnotationReader
      */
     private function getMethodsByType($entity, $type)
     {
-          $reflectionClass = new \ReflectionClass($entity);
-          $methods = $reflectionClass->getMethods();
+        $reflectionClass = static::createOrGetReflectionClass($entity);
+        $methods = $reflectionClass->getMethods();
 
-          $fields = array();
-          foreach ($methods as $method) {
-                $annotation = $this->reader->getMethodAnnotation($method, $type);
+        $fields = array();
+        foreach ($methods as $method) {
+            /* @var \ReflectionMethod $method */
+            /* @var \FS\SolrBundle\Doctrine\Annotation\Field $annotation */
+            $annotation = $this->getMethodAnnotation($method, $type);
 
-                if (null === $annotation) {
-                    continue;
-                }
+            if (null === $annotation) {
+                continue;
+            }
 
-                if (!$method->isPublic()) {
-                    throw new AnnotationException(sprintf('Method "%s" in class "%s" is not callable. Change visibility from %s to %s.',
+            if (!$method->isPublic()) {
+                throw new AnnotationException(sprintf('Method "%s" in class "%s" is not callable. Change visibility from %s to %s.',
                         $method->getName(),
                         $method->getDeclaringClass(),
                         $method->isPrivate() ? 'private' : 'protected'
                     ));
-                }
+            }
 
-                // todo
-                if (is_object($entity)) {
-                    $annotation->value = $method->invoke($entity);
-                } else {
-                    $annotation->value = null;
-                }
+            // todo
+            if (is_object($entity)) {
+                $annotation->value = $method->invoke($entity);
+            } else {
+                $annotation->value = null;
+            }
 
-                if ($annotation->name == '') {
-                    $annotation->name = $method->getName();
-                }
+            if ($annotation->name == '') {
+                $annotation->name = $method->getName();
+            }
 
-                $fields[] = $annotation;
-          }
+            $fields[] = $annotation;
+        }
 
-          return $fields;
+        return $fields;
     }
 
     /**
-     * @param object $entity
+     * @param object|string $entity
      * @return array
      */
     public function getFields($entity)
     {
-        return array_merge(
-            $this->getPropertiesByType($entity, self::FIELD_CLASS),
-            $this->getMethodsByType($entity, self::FIELD_CLASS)
-        );
+        $key = null;
+        if (!is_object($entity)) {
+            $key = 'fields_'.$entity;
+        }
+
+        $fields = null;
+        if (is_object($entity) || !$this->cacheHas($key)) {
+            $fields = array_merge(
+                $this->getPropertiesByType($entity, self::FIELD_CLASS),
+                $this->getMethodsByType($entity, self::FIELD_CLASS)
+            );
+        }
+
+        if (!is_object($entity)) {
+            if ($fields != null) {
+                static::$inMemoryCache['fields'][$key] = $fields;
+            }
+
+            $fields = static::$inMemoryCache['fields'][$key];
+        }
+
+        return $fields;
     }
 
     /**
@@ -123,7 +154,8 @@ class AnnotationReader
      */
     public function getEntityBoost($entity)
     {
-        $annotation = $this->getClassAnnotation($entity, self::DOCUMENT_INDEX_CLASS);
+        $class = static::createOrGetReflectionClass($entity);
+        $annotation = $this->getClassAnnotation($class, self::DOCUMENT_INDEX_CLASS);
 
         if (!$annotation instanceof Document) {
             return 0;
@@ -148,7 +180,7 @@ class AnnotationReader
         $id = $this->getPropertiesByType($entity, self::FIELD_IDENTIFIER_CLASS);
 
         if (count($id) == 0) {
-            throw new \RuntimeException('no identifer declared in entity ' . get_class($entity));
+            throw new \RuntimeException('no identifer declared in class/entity ' . (is_object($entity) ? get_class($entity) : $entity));
         }
 
         return reset($id);
@@ -160,7 +192,8 @@ class AnnotationReader
      */
     public function getRepository($entity)
     {
-        $annotation = $this->getClassAnnotation($entity, self::DOCUMENT_CLASS);
+        $class = static::createOrGetReflectionClass($entity);
+        $annotation = $this->getClassAnnotation($class, self::DOCUMENT_CLASS);
 
         if ($annotation instanceof Document) {
             return $annotation->repository;
@@ -198,7 +231,8 @@ class AnnotationReader
      */
     public function hasDocumentDeclaration($entity)
     {
-        $annotation = $this->getClassAnnotation($entity, self::DOCUMENT_INDEX_CLASS);
+        $class = static::createOrGetReflectionClass($entity);
+        $annotation = $this->getClassAnnotation($class, self::DOCUMENT_INDEX_CLASS);
 
         return $annotation !== null;
     }
@@ -209,7 +243,8 @@ class AnnotationReader
      */
     public function getSynchronizationCallback($entity)
     {
-        $annotation = $this->getClassAnnotation($entity, self::SYNCHRONIZATION_FILTER_CLASS);
+        $class = static::createOrGetReflectionClass($entity);
+        $annotation = $this->getClassAnnotation($class, self::SYNCHRONIZATION_FILTER_CLASS);
 
         if (!$annotation) {
             return '';
@@ -219,26 +254,138 @@ class AnnotationReader
     }
 
     /**
-     * @param string $entity
-     * @param string $annotation
-     * @return string
+     * @param $entity
+     * @return array
      */
-    private function getClassAnnotation($entity, $annotation)
-    {
-        $reflectionClass = new \ReflectionClass($entity);
-
-        return $this->reader->getClassAnnotation($reflectionClass, $annotation);
-    }
-
     public function getDistriminatorMap($entity)
     {
-        $reflectionClass = new \ReflectionClass($entity);
+        $class = static::createOrGetReflectionClass($entity);
 
         // todo: added support for orm too
         $odmDistriminatorMapClass = '\Doctrine\ODM\MongoDB\Mapping\Annotations\DiscriminatorMap';
-
-        $odmDistriminatorMap = $this->getClassAnnotation($entity, $odmDistriminatorMapClass);
+        $odmDistriminatorMap = $this->getClassAnnotation($class, $odmDistriminatorMapClass);
 
         return $odmDistriminatorMap->value;
+    }
+
+    /**
+     * @param $class
+     * @return mixed
+     */
+    protected static function createOrGetReflectionClass($class)
+    {
+        if (is_object($class)) {
+            return new \ReflectionClass($class);
+        }
+
+        if (!isset(static::$inMemoryCache['reflection_class'][$class])) {
+            static::$inMemoryCache['reflection_class'][$class] = new \ReflectionClass($class);
+        }
+
+        return static::$inMemoryCache['reflection_class'][$class];
+    }
+
+    /**
+     * @param \ReflectionClass $class
+     * @return mixed
+     */
+    public function getClassAnnotations(\ReflectionClass $class)
+    {
+        $cacheKey = $class->getName().'_class_annotations';
+        if (!$this->cacheHas($cacheKey)) {
+            $this->cacheAdd($cacheKey, $this->reader->getClassAnnotations($class));
+        }
+        return $this->cacheGet($cacheKey);
+    }
+
+    /**
+     * @param \ReflectionClass $class
+     * @param $annotationName
+     * @return null
+     */
+    public function getClassAnnotation(\ReflectionClass $class, $annotationName)
+    {
+        $annotations = $this->getClassAnnotations($class);
+
+        foreach ($annotations as $annotation) {
+            if ($annotation instanceof $annotationName) {
+                return $annotation;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param \ReflectionProperty $property
+     * @return mixed
+     */
+    public function getPropertyAnnotations(\ReflectionProperty $property)
+    {
+        $cacheKey = $property->getDeclaringClass().'_'.$property->getName().'_property_annotations';
+        if (!$this->cacheHas($cacheKey)) {
+            $this->cacheAdd($cacheKey, $this->reader->getPropertyAnnotations($property));
+        }
+        return $this->cacheGet($cacheKey);
+    }
+
+    /**
+     * @param \ReflectionProperty $property
+     * @param $annotationName
+     * @return null
+     */
+    public function getPropertyAnnotation(\ReflectionProperty $property, $annotationName)
+    {
+        $annotations = $this->getPropertyAnnotations($property);
+
+        foreach ($annotations as $annotation) {
+            if ($annotation instanceof $annotationName) {
+                return $annotation;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param \ReflectionMethod $method
+     * @return mixed
+     */
+    public function getMethodAnnotations(\ReflectionMethod $method)
+    {
+        $cacheKey = $method->getDeclaringClass().'_'.$method->getName().'_method_annotations';
+        if (!$this->cacheHas($cacheKey)) {
+            $this->cacheAdd($cacheKey, $this->reader->getMethodAnnotations($method));
+        }
+        return $this->cacheGet($cacheKey);
+    }
+
+    /**
+     * @param \ReflectionMethod $method
+     * @param $annotationName
+     * @return null
+     */
+    public function getMethodAnnotation(\ReflectionMethod $method, $annotationName)
+    {
+        $annotations = $this->getMethodAnnotations($method);
+
+        foreach ($annotations as $annotation) {
+            if ($annotation instanceof $annotationName) {
+                return $annotation;
+            }
+        }
+
+        return null;
+    }
+
+    // cache helper
+    protected function cacheAdd($key, $data) {
+        static::$inMemoryCache[$key] = $data;
+    }
+    protected function cacheHas($key) {
+        return isset(static::$inMemoryCache[$key]);
+    }
+    protected function cacheGet($key) {
+        return static::$inMemoryCache[$key];
     }
 }
