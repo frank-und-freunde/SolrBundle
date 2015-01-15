@@ -244,6 +244,7 @@ class Solr
 
     /**
      * @param AbstractQuery $query
+     * @throws \Exception
      * @return array of found documents
      */
     public function query(AbstractQuery $query)
@@ -341,6 +342,10 @@ class Solr
         $metaInformations = $this->metaInformationFactory->loadInformation($entity);
 
         if (!$metaInformations) {
+            return null;
+        }
+
+        if (!$this->addToIndex($metaInformations, $entity)) {
             return null;
         }
 
