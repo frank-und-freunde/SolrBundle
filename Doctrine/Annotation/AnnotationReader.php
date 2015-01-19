@@ -285,17 +285,18 @@ class AnnotationReader
         return static::$inMemoryCache['reflection_class'][$class];
     }
 
+    // Performance improvements
+
     /**
      * @param \ReflectionClass $class
      * @return mixed
      */
-    public function getClassAnnotations(\ReflectionClass $class)
-    {
-        $cacheKey = $class->getName().'_class_annotations';
-        if (!$this->cacheHas($cacheKey)) {
-            $this->cacheAdd($cacheKey, $this->reader->getClassAnnotations($class));
+    public function getClassAnnotations(\ReflectionClass $class) {
+        $k = $class->getName().'_class_annotations';
+        if (!$this->cacheHas($k)) {
+            $this->cacheAdd($k, $this->reader->getClassAnnotations($class));
         }
-        return $this->cacheGet($cacheKey);
+        return $this->cacheGet($k);
     }
 
     /**
@@ -303,8 +304,7 @@ class AnnotationReader
      * @param $annotationName
      * @return null
      */
-    public function getClassAnnotation(\ReflectionClass $class, $annotationName)
-    {
+    public function getClassAnnotation(\ReflectionClass $class, $annotationName) {
         $annotations = $this->getClassAnnotations($class);
 
         foreach ($annotations as $annotation) {
@@ -334,8 +334,7 @@ class AnnotationReader
      * @param $annotationName
      * @return null
      */
-    public function getPropertyAnnotation(\ReflectionProperty $property, $annotationName)
-    {
+    public function getPropertyAnnotation(\ReflectionProperty $property, $annotationName) {
         $annotations = $this->getPropertyAnnotations($property);
 
         foreach ($annotations as $annotation) {
@@ -353,7 +352,7 @@ class AnnotationReader
      */
     public function getMethodAnnotations(\ReflectionMethod $method)
     {
-        $cacheKey = $method->getDeclaringClass().'_'.$method->getName().'_method_annotations';
+        $cacheKey = $method->getName().'_method_annotations';
         if (!$this->cacheHas($cacheKey)) {
             $this->cacheAdd($cacheKey, $this->reader->getMethodAnnotations($method));
         }
@@ -365,8 +364,7 @@ class AnnotationReader
      * @param $annotationName
      * @return null
      */
-    public function getMethodAnnotation(\ReflectionMethod $method, $annotationName)
-    {
+    public function getMethodAnnotation(\ReflectionMethod $method, $annotationName) {
         $annotations = $this->getMethodAnnotations($method);
 
         foreach ($annotations as $annotation) {
@@ -378,13 +376,26 @@ class AnnotationReader
         return null;
     }
 
-    // cache helper
+    /**
+     * @param $key
+     * @param $data
+     */
     protected function cacheAdd($key, $data) {
         static::$inMemoryCache[$key] = $data;
     }
+
+    /**
+     * @param $key
+     * @return bool
+     */
     protected function cacheHas($key) {
         return isset(static::$inMemoryCache[$key]);
     }
+
+    /**
+     * @param $key
+     * @return mixed
+     */
     protected function cacheGet($key) {
         return static::$inMemoryCache[$key];
     }
