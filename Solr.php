@@ -346,6 +346,7 @@ class Solr
         }
 
         if (!$this->addToIndex($metaInformations, $entity)) {
+            $this->removeDocument($entity);
             return null;
         }
 
