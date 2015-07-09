@@ -81,7 +81,12 @@ class EntityMapper
             throw new \InvalidArgumentException('$sourceTargetEntity should not be null');
         }
 
-        $metaInformation = $this->metaInformationFactory->loadInformation($sourceTargetEntity);
+        // simple cache for meta information
+        static $metaInformationCache = array();
+        if (!array_key_exists($sourceTargetEntity, $metaInformationCache)) {
+            $metaInformationCache[$sourceTargetEntity] = $this->metaInformationFactory->loadInformation($sourceTargetEntity);
+        }
+        $metaInformation = $metaInformationCache[$sourceTargetEntity];
 
         if ($metaInformation->isAbstract()) {
             foreach ($metaInformation->getDistriminatorMap() as $type => $class) {
